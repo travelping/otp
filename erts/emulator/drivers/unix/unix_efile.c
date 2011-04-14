@@ -1480,7 +1480,14 @@ efile_fallocate(Efile_error* errInfo, int fd, Sint64 newFileLength)
 {
 #if defined HAVE_FALLOCATE
     /* Linux specific, more efficient than posix_fallocate. */
-    return check_error(fallocate(fd, FALLOC_FL_KEEP_SIZE, 0, newFileLength), errInfo);
+    int error = fallocate(fd, FALLOC_FL_KEEP_SIZE, 0, newFileLength);
+
+#if defined HAVE_POSIX_FALLOCATE
+    /* fallback to posix_fallocate if available */
+    error = posix_fallocate(fd, 0, newFileLength);
+#endif
+
+    return check_error(error, errInfo);
 #elif defined F_PREALLOCATE
     /* Mac OS X specific, equivalent to posix_fallocate. */
     int ret;

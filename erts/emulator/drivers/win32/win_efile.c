@@ -1584,6 +1584,8 @@ int
 efile_fallocate(Efile_error* errInfo, int fd, Sint64 newFileLength)
 {
     /* No file preallocation method available in Windows. */
-    errno = ENOSYS;
+    errno = errno_map(ERROR_NOT_SUPPORTED);
+    SetLastError(ERROR_NOT_SUPPORTED);
+
     return check_error(-1, errInfo);
 }

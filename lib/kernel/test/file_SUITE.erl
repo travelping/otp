@@ -1610,26 +1610,26 @@ allocate(Config) when is_list(Config) ->
     Line1 = "Hello\n",
     Line2 = "World!\n",
 
-    ?line {ok, Fd} = ?FILE_MODULE:open(Allocate, [write]),
-    ?line ok = ?FILE_MODULE:allocate(Fd, iolist_size([Line1, Line2])),
+    ?line {ok, Fd} = ?FILE_MODULE:open(Allocate, [write, binary]),
+    ?line ok = allocate_and_assert(Fd, iolist_size([Line1, Line2])),
     ?line ok = io:format(Fd, "~s", [Line1]),
     ?line ok = io:format(Fd, "~s", [Line2]),
     ?line ok = ?FILE_MODULE:close(Fd),
 
-    ?line {ok, Fd2} = ?FILE_MODULE:open(Allocate, [write]),
-    ?line ok = ?FILE_MODULE:allocate(Fd2, iolist_size(Line1)),
+    ?line {ok, Fd2} = ?FILE_MODULE:open(Allocate, [write, binary]),
+    ?line ok = allocate_and_assert(Fd2, iolist_size(Line1)),
     ?line ok = io:format(Fd2, "~s", [Line1]),
     ?line ok = io:format(Fd2, "~s", [Line2]),
     ?line ok = ?FILE_MODULE:close(Fd2),
 
-    ?line {ok, Fd3} = ?FILE_MODULE:open(Allocate, [write]),
-    ?line ok = ?FILE_MODULE:allocate(Fd3, iolist_size(Line1) + 1),
+    ?line {ok, Fd3} = ?FILE_MODULE:open(Allocate, [write, binary]),
+    ?line ok = allocate_and_assert(Fd3, iolist_size(Line1) + 1),
     ?line ok = io:format(Fd3, "~s", [Line1]),
     ?line ok = io:format(Fd3, "~s", [Line2]),
     ?line ok = ?FILE_MODULE:close(Fd3),
 
-    ?line {ok, Fd4} = ?FILE_MODULE:open(Allocate, [write]),
-    ?line ok = ?FILE_MODULE:allocate(Fd4, 4 * iolist_size([Line1, Line2])),
+    ?line {ok, Fd4} = ?FILE_MODULE:open(Allocate, [write, binary]),
+    ?line ok = allocate_and_assert(Fd4, 4 * iolist_size([Line1, Line2])),
     ?line ok = io:format(Fd4, "~s", [Line1]),
     ?line ok = io:format(Fd4, "~s", [Line2]),
     ?line ok = ?FILE_MODULE:close(Fd4),
@@ -1637,6 +1637,35 @@ allocate(Config) when is_list(Config) ->
     ?line [] = flush(),
     ?line test_server:timetrap_cancel(Dog),
     ok.
+
+allocate_and_assert(Fd, Size) ->
+    Result = ?FILE_MODULE:allocate(Fd, Size),
+    case os:type() of
+        {unix, darwin} ->
+            % All recent Mac OS X versions (> 10.3) support the fcntl
+            % operation F_PREALLOCATE.
+            ok = Result;
+        {unix, sunos} ->
+            % Solaris supports posix_fallocate, but ZFS, which doesn't support
+            % posix_fallocate (nor any equivalent) is the most common filesystem
+            % used together with Solaris. Ignore the result, since we can't easily
+            % find on which filesystem we are. Solaris/UFS should work.
+            % See http://opensolaris.org/jive/thread.jspa?messageID=511127.
+            ok;
+        {unix, linux} ->
+            % All recent Linux kernels and glibc versions support either
+            % fallocate (Linux specific, and only for ext4 or ocfs2) or
+            % posix_fallocate.
+            ok = Result;
+        {win32, _} ->
+            % No pre allocation primitives on any Windows version.
+            {error, _} = Result;
+        _ ->
+            % Other OSes like FreeBSD, OpenBSD, etc, don't seem to implement
+            % posix_fallocate or any equivalent (perhaps more recent or future
+            % versios do).
+            ok
+    end.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
