@@ -1484,7 +1484,9 @@ efile_fallocate(Efile_error* errInfo, int fd, Sint64 newFileLength)
 
 #if defined HAVE_POSIX_FALLOCATE
     /* fallback to posix_fallocate if available */
-    error = posix_fallocate(fd, 0, newFileLength);
+    if (error != 0) {
+        error = posix_fallocate(fd, 0, newFileLength);
+    }
 #endif
 
     return check_error(error, errInfo);
