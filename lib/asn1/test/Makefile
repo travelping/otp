@@ -143,7 +143,7 @@ RELSYSDIR = $(RELEASE_PATH)/asn1_test
 # ----------------------------------------------------
 # FLAGS
 # ----------------------------------------------------
-ERL_COMPILE_FLAGS += +warnings_as_errors
+ERL_COMPILE_FLAGS += -Werror
 EBIN = .
 
 # ----------------------------------------------------
