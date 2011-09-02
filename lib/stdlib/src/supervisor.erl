@@ -672,7 +672,12 @@ do_restart(temporary, Reason, Child, State) ->
 restart(Child, State) ->
     case add_restart(State) of
 	{ok, NState} ->
-	    restart(NState#state.strategy, Child, NState);
+	    receive
+		{'EXIT', _From, shutdown} ->
+		    {shutdown, remove_child(Child, NState)}
+	    after 0 ->
+		    restart(NState#state.strategy, Child, NState)
+	    end;
 	{terminate, NState} ->
 	    report_error(shutdown, reached_max_restart_intensity,
 			 Child, State#state.name),
