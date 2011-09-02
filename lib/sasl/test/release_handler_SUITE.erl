@@ -54,8 +54,9 @@ win32_cases() ->
     [{group,release} | cases()].
 
 %% Cases that can be run on all platforms
-cases() ->
-    [otp_2740, otp_2760, otp_5761, otp_9402, otp_9417, instructions, eval_appup].
+cases() -> 
+    [otp_2740, otp_2760, otp_5761, otp_9402, otp_9417, instructions, eval_appup, supervisor_which_children_timeout].
+
 
 groups() ->
     [{release,[],
@@ -518,6 +519,31 @@ no_cc() ->
 %%%-----------------------------------------------------------------
 %%% Testing of reported bugs and other tickets.
 %%%-----------------------------------------------------------------
+
+%%-----------------------------------------------------------------
+%% release_handler_1:get_supervised_procs/0 test
+%%-----------------------------------------------------------------
+supervisor_which_children_timeout(Conf) ->
+    PrivDir = priv_dir(Conf),
+    Dir = filename:join(PrivDir,"supervisor_which_children_timeout"),
+    DataDir = ?config(data_dir,Conf),
+    LibDir = filename:join([DataDir,release_handler_timeouts]),
+
+    Rel1 = create_and_install_fake_first_release(Dir,[{dummy,"0.1",LibDir}]),
+
+    {ok, Node} = t_start_node(supervisor_which_children_timeout, Rel1, []),
+    Proc = rpc:call(Node, erlang, whereis, [dummy_sup_2]),
+    ok = rpc:call(Node, sys, suspend, [Proc]),
+    catch case rpc:call(Node, release_handler_1, get_supervised_procs, []) of
+        {'EXIT', {release_handler_error, _}} ->
+            ok;
+        _ ->
+            ?t:fail("release_handler_1 did not properly fail when faced with"
+                    " a suspended supervisor and a which_children call")
+    end,
+
+    true = stop_node(Node),
+    ok.
 
 %%-----------------------------------------------------------------
 %% Ticket: OTP-2740
